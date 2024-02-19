@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <title>All Products</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN" crossorigin="anonymous">
+</head>
+
+<body>
+  <div class="container">
+    <form action="/search" method="GET" class="d-flex align-items-center">
+      <div class="input-group mb-3" style="margin-top:1em; display: flex; justify-content: center;">
+        <div>
+          <input type="text" name="query" autocomplete="off" class="form-control" placeholder="Search for products"
+            aria-label="Search">
+        </div>
+        <div>
+          <button type="submit" class="btn btn-primary ">Search</button>
+        </div>
+      </div>
+    </form>
+
+    <div style="display: flex;" class="mb-1">
+      <div style="flex-grow: 1;">
+        <h2>All Products</h2>
+      </div>
+      <!-- Division for dropdown -->
+      <div style="align-self:center;">
+        <select class="form-select" id="categoryDropdown">
+          <!-- Categories will be inserted here dynamically -->
+        </select>
+      </div>
+      <div style="align-self:center; margin-left: 1em;">
+        <a href="/category" class="btn btn-primary">Go to category</a>
+      </div>
+      <div style="align-self:center; margin-left: 1em;">
+        <button onclick="window.history.back()" class="btn btn-outline-primary">Back</button>
+      </div>
+    </div>
+
+    <!-- Table of products -->
+    <div class="table-responsive">
+      <table class="table table-bordered" id="productsTable">
+        <thead class="thead-dark">
+          <tr>
+            <th>ProductID</th>
+            <th>ProductName</th>
+            <th>Brand</th>
+            <th>MRP</th>
+            <th>DiscountedPrice</th>
+            <th>CreatedDate</th>
+            <th>Cid</th>
+          </tr>
+        </thead>
+        <tbody id="productsBody">
+          <!-- Products will be inserted here -->
+        </tbody>
+      </table>
+    </div>
+
+    <nav aria-label="Products Pagination">
+      <ul class="pagination" id="pagination">
+        <!-- Previous button -->
+        <li class="page-item" id="prevPage">
+          <a class="page-link" href="#" aria-label="Previous" onclick="handlePageChange(-1)">
+            <span aria-hidden="true">&laquo;</span>
+          </a>
+        </li>
+
+        <!-- Pagination links will be inserted here -->
+
+        <!-- Next button -->
+        <li class="page-item" id="nextPage">
+          <a class="page-link" href="#" aria-label="Next" onclick="handlePageChange(1)">
+            <span aria-hidden="true">&raquo;</span>
+          </a>
+        </li>
+      </ul>
+    </nav>
+  </div>
+
+  <script>
+    function fetchData(url) {
+      return fetch(url)
+        .then(response => {
+          if (!response.ok) {
+            throw new Error('Network response was not ok');
+          }
+          return response.json();
+        })
+        .catch(error => {
+          console.error('Error fetching data:', error);
+          throw error;
+        });
+    }
+
+    function renderTable(data) {
+      const { products, page, pageSize, totalPages } = data;
+      const tableBody = document.getElementById('productsBody');
+      tableBody.innerHTML = '';
+
+      products.forEach(product => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+          <td>${product.pid}</td>
+          <td>${product.pname}</td>
+          <td>${product.brand}</td>
+          <td>${product.mrp}</td>
+          <td>${product.discounted_price}</td>
+          <td>${new Date(product.created_date).toLocaleDateString()}</td>
+          <td>${product.cid}</td>
+        `;
+        tableBody.appendChild(row);
+      });
+
+      const pagination = document.getElementById('pagination');
+      pagination.innerHTML = '';
+
+      // Previous button
+      const prevPage = document.createElement('li');
+      prevPage.className = `page-item ${page === 1 ? 'disabled' : ''}`;
+      prevPage.innerHTML = `<a class="page-link" href="#" aria-label="Previous" onclick="handlePageChange(-1)" ${page === 1 ? 'tabindex="-1" aria-disabled="true"' : ''}>
+                                <span aria-hidden="true">&laquo;</span>
+                                </a>`;
+      pagination.appendChild(prevPage);
+
+      for (let i = 1; i <= totalPages; i++) {
+        const li = document.createElement('li');
+        li.className = `page-item ${page === i ? 'active' : ''}`;
+        li.innerHTML = `<a class="page-link" href="#" onclick="fetchData('/all-products-json?page=${i}').then(data => renderTable(data))">${i}</a>`;
+        pagination.appendChild(li);
+      }
+
+      // Next button
+      const nextPage = document.createElement('li');
+      nextPage.className = `page-item ${page === totalPages ? 'disabled' : ''}`;
+      nextPage.innerHTML = `<a class="page-link" href="#" aria-label="Next" onclick="handlePageChange(1)" ${page === totalPages ? 'tabindex="-1" aria-disabled="true"' : ''}>
+                                <span aria-hidden="true">&raquo;</span>
+                                </a>`;
+      pagination.appendChild(nextPage);
+    }
+
+    function populateCategoriesDropdown(data) {
+      const categoryDropdown = document.getElementById('categoryDropdown');
+      // Clear existing options
+      categoryDropdown.innerHTML = '';
+
+      // Add a default option
+      const defaultOption = document.createElement('option');
+      defaultOption.value = '';
+      defaultOption.text = 'Select a category';
+      categoryDropdown.appendChild(defaultOption);
+      // Populate the dropdown with categories
+      data.categories.forEach(category => {
+        const option = document.createElement('option');
+        option.value = category.cid; // Assuming category_name is the property with the category name
+        option.text = category.cname;
+        categoryDropdown.appendChild(option);
+      });
+
+
+      // Handle dropdown change event
+      categoryDropdown.addEventListener('change', function () {
+        const selectedCategory = this.value;
+        if (selectedCategory) {
+          window.location.href = `/product/${selectedCategory}`;
+        }
+      });
+    }
+
+
+    function handlePageChange(offset) {
+      const currentPage = parseInt(document.querySelector('.page-item.active a').innerText);
+      const newPage = currentPage + offset;
+
+      fetchData(`/all-products-json?page=${newPage}`)
+        .then(data => renderTable(data))
+        .catch(error => console.error('Error fetching and rendering data:', error));
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      fetchData('/all-products-json')
+        .then(data => { renderTable(data), populateCategoriesDropdown(data) })
+        .catch(error => console.error('Error fetching and rendering data:', error));
+    });
+
+  </script>
+
+</body>
+
+</html>

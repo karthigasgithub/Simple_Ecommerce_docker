@@ -3,14 +3,21 @@ const app = express();
 const mysql = require('mysql');
 const port = 3000;
 const { Client } = require('@elastic/elasticsearch');
-const client = new Client({ node: 'http://localhost:9200' });
-
+const esClient = new Client({
+  cloud: {
+    id: "Ecommerce:dXMtY2VudHJhbDEuZ2NwLmNsb3VkLmVzLmlvOjQ0MyRiYTBkZjMxODU4NjY0ODEwYmZhZDc5MmQ5ZThmOTU2YSRhYzkwODg1M2ZlNzI0MzUzODk5ODdhMzJmZjQwZmUzMw=="
+  },
+  auth: {
+    username: 'elastic',
+    password: '8OGFWiCu7ZWcmWGuB39J85aQ'
+  }
+})
 
 const db = mysql.createConnection({
-  host: 'localhost',
-  user: 'root',
-  password: 'password',
-  database: 'ecommerce',
+  host:"sql6.freesqldatabase.com",
+  user: "sql6685497",
+  password: "ImT7pPcBnT",
+  database: "sql6685497",
 });
 
 db.connect((err) => {
@@ -50,8 +57,9 @@ app.get('/category-json', (req, res) => {
     });
   });
 });
+
 app.get('/category',(req,res)=>{
-  res.sendFile(__dirname+"/category.html");  }
+  res.sendFile(__dirname+"/static/category.html");  }
 );
 
   // Route for the root URL
@@ -94,7 +102,7 @@ app.get('/category',(req,res)=>{
     });
   });});
   app.get('/all-products',(req,res)=>{
-    res.sendFile(__dirname+"/products.html");  }
+    res.sendFile(__dirname+"/static/products.html");  }
   );
 
 
@@ -105,6 +113,7 @@ app.get('/product-json/:categoryId', (req, res) => {
   const pageSize = 8;
   const offset = (page - 1) * pageSize;
 
+  const categoryname=`SELECT cname from category where cid=${categoryId}`;
   const queryCount = `SELECT COUNT(*) AS totalCount FROM product WHERE cid = ${categoryId}`;
   const queryProducts = `SELECT * FROM product WHERE cid = ${categoryId} LIMIT ${offset}, ${pageSize}`;
 
@@ -133,17 +142,21 @@ app.get('/product-json/:categoryId', (req, res) => {
           return;
         }
 
+       db.query(categoryname,(err,cname)=>{
+        if (err) {
+          console.error('Error querying categories:', err);
+          res.status(500).send('Internal Server Error');
+          return;
+        }
         const totalPages=Math.ceil(totalCount/pageSize);
-
-        // Render the EJS template with products data
-        res.json({ products, categoryId, page, pageSize, totalCount, totalPages, categories });
-
+        res.json({ products, categoryId, page, pageSize, totalCount, totalPages, categories,cname });
+       }) ;
       });
     });
   });
 });
 app.get('/product/:categoryId',(req,res)=>{
-  res.sendFile(__dirname+"/category-product.html");  }
+  res.sendFile(__dirname+"/static/category-product.html");  }
 );
 
 
@@ -188,7 +201,7 @@ app.get("/search-json", async (req, res) => {
   }
 
   try {
-    let body = await client.search({
+    let body = await esClient.search({
       index: "products_index",
       body: {
         query: {
@@ -222,6 +235,7 @@ app.get("/search-json", async (req, res) => {
       },
     });
     if (body && body.hits) { // Check if hits exist and total hits count is greater than 0
+      console.log(body.hits.hits)
       let data = body.hits.hits;
       let results = data.map(hit => hit._source);
       let totalPages = Math.ceil(results.length / 5); // Assuming 10 results per page
@@ -234,7 +248,7 @@ app.get("/search-json", async (req, res) => {
 });
 
 app.get('/search',(req,res)=>{
-  res.sendFile(__dirname+"/search-product.html");  }
+  res.sendFile(__dirname+"/static/search-product.html");  }
 );
 
 app.listen(port, () => {

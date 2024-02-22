@@ -22,7 +22,7 @@
     </div>
 
     <div style="display: flex;" class="mt-3 mb-1">
-      <div style="flex-grow: 1;"><h2>Products</h2></div>
+      <div style="flex-grow: 1;"><h2 id="header">Products</h2></div>
       <div style="align-self:center;">
         <select class="form-select" id="categoryDropdown">
           <!-- Categories will be inserted here dynamically -->
@@ -65,6 +65,11 @@
       const response = await fetch(url);
       const data = await response.json();
       return data;
+    }
+
+    function renderheader(data){
+      let header=document.getElementById('header');
+      header.innerHTML=data[0].cname+" "+header.innerHTML;
     }
   
     function renderTable(products) {
@@ -140,6 +145,8 @@
       let categoryId = window.location.pathname.split('/').pop();
       let page = urlParams.get('page') || 1;
       const data = await fetchData(`/product-json/${categoryId}?page=${page}`);
+      console.log(data.cname);
+      renderheader(data.cname);
       renderTable(data.products);
       renderDropdown(data.categories);
       renderPagination(data.page, data.totalPages, categoryId);
